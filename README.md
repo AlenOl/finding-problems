@@ -1,4 +1,4 @@
-# finding-problems
+# Finding Problems
 
 Project for managing findings security issues found during scans.
 
