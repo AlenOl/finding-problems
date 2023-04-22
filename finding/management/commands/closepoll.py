@@ -1,21 +1,26 @@
+import httpx
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
-from polls.models import Question as Poll
+from finding.models import Finding
 
 
 class Command(BaseCommand):
-    help = 'Closes the specified poll for voting'
 
     def add_arguments(self, parser):
-        parser.add_argument('poll_ids', nargs='+', type=int)
+        parser.add_argument('target_id', nargs='?', type=str)
 
     def handle(self, *args, **options):
-        for poll_id in options['poll_ids']:
-            try:
-                poll = Poll.objects.get(pk=poll_id)
-            except Poll.DoesNotExist:
-                raise CommandError('Poll "%s" does not exist' % poll_id)
+        url_to_scrape = settings.FINDINGS_API_URL + options['target_id']
+        headers = {'Authorization': settings.FINDINGS_JWT_TOKEN}
+        resp = httpx.get(url_to_scrape, headers=headers)
 
-            poll.opened = False
-            poll.save()
-
-            self.stdout.write(self.style.SUCCESS('Successfully closed poll "%s"' % poll_id))
+        finding_response = resp.json()["results"]
+        finding = Finding(
+            target_id=finding_response[0]["target"]["id"],
+            definition_id=finding_response[0]["definition"]["id"],
+            scans=finding_response[0]["scans"],
+            url=finding_response[0]["url"],
+            path=finding_response[0]["path"],
+            method=finding_response[0]["method"],
+        )
+        finding.save()
